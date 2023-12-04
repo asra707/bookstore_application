@@ -14,12 +14,17 @@ public class JDBC {
             con = DriverManager.getConnection(url, username, password);
             if (con != null) {
                 System.out.println("FINALLY connected to the database!!!!!!!");
+                // operations
 
-                // add operations
+                //insertAuthor(con, 7,"John le Carre");
 
-                //insertAuthor(con, 6,"Tatsuki Fujimoto"); done
+                //insertBook(con, 8, "A Legacy of Spies", 7, 0);
 
-                //insertBook(con, 7, "chainsawman",6, 21); done
+                //insertCustomer(con, 6, "Joe Mama", "joemama@gamil.com", "15 StreetName, CityName");
+
+                //insertOrder(con, 11, 6, 7, "2023-12-04", 1); done
+
+                //Transaction(con, 13, 6, 8, "2023-12-04", 1);
 
                 //retrieveBookData(con);
 
@@ -70,6 +75,69 @@ public class JDBC {
         }
     }
 
+    private static void insertCustomer(Connection con, int customerID, String customerName, String email, String address) throws SQLException {
+        String sql = "insert into Customers (customerID, customerName, email, address) values (?, ?, ?, ?)";
+        try (PreparedStatement preps = con.prepareStatement(sql)) {
+            preps.setInt(1, customerID);
+            preps.setString(2, customerName);
+            preps.setString(3, email);
+            preps.setString(4, address);
+            preps.executeUpdate();
+            System.out.println("Customer added!");
+        } catch (SQLException e) {
+            System.out.println("Error: " + e.getMessage() + " :(");
+        }
+    }
+
+    //trans
+    private static void transaction(Connection con, int orderID, int customerID, int bookID, String orderDate, int quantity) throws SQLException {
+        String sql = "select stock from Books where bookID = ?";
+        try (PreparedStatement check = con.prepareStatement(sql)) {
+            check.setInt(1, bookID);
+            ResultSet res = check.executeQuery();
+            if (res.next()) {
+                int stock = res.getInt("stock");
+                if (stock >= quantity) {
+                    con.setAutoCommit(false);
+                    String insertOrder = "insert into Orders (orderID, customerID, bookID, orderDate, quantity) VALUES (?, ?, ?, ?, ?)";
+                    try (PreparedStatement insertOrderPrep = con.prepareStatement(insertOrder)) {
+                        insertOrderPrep.setInt(1, orderID);
+                        insertOrderPrep.setInt(2, customerID);
+                        insertOrderPrep.setInt(3, bookID);
+                        insertOrderPrep.setDate(4, Date.valueOf(orderDate));
+                        insertOrderPrep.setInt(5, quantity);
+                        insertOrderPrep.executeUpdate();
+                        System.out.println("Order added!");
+
+                        // dec
+                        String sqlup = "update Books SET stock = stock - ? where bookID = ?";
+                        try (PreparedStatement updateStock= con.prepareStatement(sqlup)) {
+                            updateStock.setInt(1, quantity);
+                            updateStock.setInt(2, bookID);
+                            updateStock.executeUpdate();
+                            System.out.println("Book stock updated!");
+
+                            con.commit();
+                        } catch (SQLException e) {
+                            con.rollback();
+                            System.out.println("Error updating stock: " + e.getMessage() + " :(");
+                        }
+                    } catch (SQLException e) {
+                        con.rollback();
+                        System.out.println("Error inserting order: " + e.getMessage() + " :(");
+                    }
+                } else {
+                    System.out.println("Not enough books available in stock.");
+                }
+            } else {
+                System.out.println("Book was not found!");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking book availability: " + e.getMessage() + " :(");
+        } finally {
+            con.setAutoCommit(true);
+        }
+    }
 
     // retrieve op
     private static void retrieveBookData(Connection con) {
@@ -97,8 +165,8 @@ public class JDBC {
 
     //update op
     private static void updateBook(Connection con, int bookID, String title, int stock) throws SQLException {
-        String updateBookQuery = "update Books set title = ?, stock = ? where bookID = ?";
-        try (PreparedStatement preps = con.prepareStatement(updateBookQuery)) {
+        String sql = "update Books set title = ?, stock = ? where bookID = ?";
+        try (PreparedStatement preps = con.prepareStatement(sql)) {
             preps.setString(1, title);
             preps.setInt(2, stock);
             preps.setInt(3, bookID);
@@ -112,7 +180,6 @@ public class JDBC {
             System.out.println("Error: " + e.getMessage() + " :(");
         }
     }
-
 
     //delete op
     // Delete op ERROR

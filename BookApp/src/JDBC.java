@@ -13,24 +13,24 @@ public class JDBC {
         try {
             con = DriverManager.getConnection(url, username, password);
             if (con != null) {
-                System.out.println("FINALLY connected to the database!!!!!!!");
+                //System.out.println("FINALLY connected to the database!!!!!!!");
                 // operations
 
-                //insertAuthor(con, 7,"John le Carre");
+                //insertAuthor(con, 8,"Fyodor Dostoyevski");
 
-                //insertBook(con, 8, "A Legacy of Spies", 7, 0);
+                //insertBook(con, 9, "Crime and Punishment", 8, 9);
 
-                //insertCustomer(con, 6, "Joe Mama", "joemama@gamil.com", "15 StreetName, CityName");
+                //insertCustomer(con, 7, "Asra Mammadli", "asraasdf@gamil.com", "56 StreetName, CityName");
 
-                //insertOrder(con, 11, 6, 7, "2023-12-04", 1); done
-
-                //Transaction(con, 13, 6, 8, "2023-12-04", 1);
+                //transaction(con, 15, 7, 8, "2023-12-06", 1);
 
                 //retrieveBookData(con);
 
-                //updateBook(con,5, "Do not kill the bird.", 8); done
+                //updateBook(con,9, "Idiot", 8);
 
-                // deleteOrders7Book(con, 5); done
+                //deleteOrders7Book(con, 9);
+
+                displayMeta(con);
 
             }
         } catch (SQLException e) {
@@ -48,10 +48,10 @@ public class JDBC {
     }
 
 
-    //create op
+    //create op for authors, books, customers.
     private static void insertAuthor(Connection con, int authorID, String authorName) throws SQLException {
-        String insertAuthorQuery = "insert into Authors (authorID, authorName) values (?, ?)";
-        try (PreparedStatement preps = con.prepareStatement(insertAuthorQuery)) {
+        String sql = "insert into Authors (authorID, authorName) values (?, ?)";
+        try (PreparedStatement preps = con.prepareStatement(sql)) {
             preps.setInt(1, authorID);
             preps.setString(2, authorName);
             preps.executeUpdate();
@@ -89,7 +89,7 @@ public class JDBC {
         }
     }
 
-    //trans
+    //transactional
     private static void transaction(Connection con, int orderID, int customerID, int bookID, String orderDate, int quantity) throws SQLException {
         String sql = "select stock from Books where bookID = ?";
         try (PreparedStatement check = con.prepareStatement(sql)) {
@@ -162,7 +162,6 @@ public class JDBC {
         }
     }
 
-
     //update op
     private static void updateBook(Connection con, int bookID, String title, int stock) throws SQLException {
         String sql = "update Books set title = ?, stock = ? where bookID = ?";
@@ -182,7 +181,6 @@ public class JDBC {
     }
 
     //delete op
-    // Delete op ERROR
     private static void deleteOrders7Book(Connection con, int bookID) throws SQLException {
         String sqlOrders = "delete from Orders where bookID = ?";
         try (PreparedStatement preps = con.prepareStatement(sqlOrders)) {
@@ -210,13 +208,48 @@ public class JDBC {
         }
     }
 
+   // accessing metadata
+   private static void displayMeta(Connection con) throws SQLException {
+       try {
+           DatabaseMetaData metaData = con.getMetaData();
 
+           ResultSet tables = metaData.getTables(null, null, "%", new String[]{"TABLE"});
+
+           while (tables.next()) {
+               String tableName = tables.getString("TABLE_NAME");
+               System.out.println("Table Name: " + tableName);
+
+               ResultSet columns = metaData.getColumns(null, null, tableName, null);
+               while (columns.next()){
+                   String columnName = columns.getString("COLUMN_NAME");
+                   String columnType = columns.getString("TYPE_NAME");
+                   int columnSize = columns.getInt("COLUMN_SIZE");
+                   System.out.println("\tColumn Name: " + columnName + ", Type: " + columnType + ", Size: " + columnSize);
+               }
+               columns.close();
+
+               ResultSet pkeys = metaData.getPrimaryKeys(null, null, tableName);
+               while (pkeys.next()){
+                   String primaryColumnName = pkeys.getString("COLUMN_NAME");
+                   System.out.println("\tPrimary Key: " + primaryColumnName);
+               }
+               pkeys.close();
+
+               ResultSet foreignKey = metaData.getImportedKeys(null, null, tableName);
+               while (foreignKey.next()){
+                   String fColumnName = foreignKey.getString("FKCOLUMN_NAME");
+                   String fTableName = foreignKey.getString("PKTABLE_NAME");
+                   String pColumnName = foreignKey.getString("PKCOLUMN_NAME");
+                   System.out.println("\tForeign Key Column: " + fColumnName + ", Primary Key Table: " + fTableName + ", Primary Key Column: " + pColumnName);
+               }
+               foreignKey.close();
+
+           }
+           tables.close();
+       } catch (SQLException e) {
+           System.out.println("Error: " + e.getMessage() + " :(");
+       }
+   }
 
 
 }
-
-
-
-
-
-
